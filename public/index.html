@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vonix AI Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+        }
+
+        .title {
+            font-size: 3rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 20px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 3rem;
+            font-weight: 300;
+        }
+
+        .voice-button-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 2rem;
+        }
+
+        .voice-button {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: white;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .voice-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 50px rgba(0,0,0,0.4);
+        }
+
+        .voice-button:active {
+            transform: scale(0.95);
+        }
+
+        .voice-button.recording {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .voice-button.processing {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            }
+            50% {
+                transform: scale(1.1);
+                box-shadow: 0 15px 60px rgba(245, 87, 108, 0.5);
+            }
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .ripple {
+            position: absolute;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            border: 3px solid rgba(255,255,255,0.5);
+            animation: ripple-animation 1.5s ease-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes ripple-animation {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        .status {
+            font-size: 1.1rem;
+            color: white;
+            margin-bottom: 1rem;
+            min-height: 1.5rem;
+            font-weight: 500;
+        }
+
+        .transcript-box {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            max-height: 300px;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+
+        .message {
+            background: rgba(255,255,255,0.9);
+            border-radius: 15px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            text-align: left;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .message:last-child {
+            margin-bottom: 0;
+        }
+
+        .message.user {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-left: 20%;
+        }
+
+        .message.assistant {
+            background: white;
+            color: #333;
+            margin-right: 20%;
+        }
+
+        .message-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 0.3rem;
+            opacity: 0.7;
+        }
+
+        .message-text {
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .error {
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        /* Scrollbar styling */
+        .transcript-box::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .transcript-box::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+
+        .transcript-box::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.3);
+            border-radius: 10px;
+        }
+
+        .transcript-box::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.5);
+        }
+
+        /* Audio wave visualization */
+        .audio-wave {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            gap: 3px;
+            margin-top: 1rem;
+        }
+
+        .audio-wave.active {
+            display: flex;
+        }
+
+        .wave-bar {
+            width: 4px;
+            height: 20px;
+            background: white;
+            border-radius: 2px;
+            animation: wave 1s ease-in-out infinite;
+        }
+
+        .wave-bar:nth-child(1) { animation-delay: 0s; }
+        .wave-bar:nth-child(2) { animation-delay: 0.1s; }
+        .wave-bar:nth-child(3) { animation-delay: 0.2s; }
+        .wave-bar:nth-child(4) { animation-delay: 0.3s; }
+        .wave-bar:nth-child(5) { animation-delay: 0.4s; }
+
+        @keyframes wave {
+            0%, 100% { height: 20px; }
+            50% { height: 40px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Vonix</h1>
+        <p class="subtitle">AI Voice Assistant</p>
+
+        <div class="status" id="status">Press the button and speak</div>
+
+        <div class="voice-button-wrapper">
+            <button class="voice-button" id="voiceButton">
+                🎤
+            </button>
+        </div>
+
+        <div class="audio-wave" id="audioWave">
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="transcript-box" id="transcriptBox">
+            <!-- Messages will appear here -->
+        </div>
+    </div>
+
+    <script>
+        const voiceButton = document.getElementById('voiceButton');
+        const status = document.getElementById('status');
+        const transcriptBox = document.getElementById('transcriptBox');
+        const errorDiv = document.getElementById('error');
+        const audioWave = document.getElementById('audioWave');
+
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+        let currentAudio = null;
+
+        // Add message to transcript
+        function addMessage(role, text) {
+            const message = document.createElement('div');
+            message.className = `message ${role}`;
+            message.innerHTML = `
+                <div class="message-label">${role === 'user' ? 'You' : 'Assistant'}</div>
+                <div class="message-text">${text}</div>
+            `;
+            transcriptBox.appendChild(message);
+            transcriptBox.scrollTop = transcriptBox.scrollHeight;
+        }
+
+        // Show error
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+            }, 5000);
+        }
+
+        // Update status
+        function updateStatus(message) {
+            status.textContent = message;
+        }
+
+        // Start recording
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    await processAudio(audioBlob);
+
+                    // Stop all tracks
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                voiceButton.classList.add('recording');
+                updateStatus('Listening... Click again to stop');
+
+                // Create ripple effect
+                const ripple = document.createElement('div');
+                ripple.className = 'ripple';
+                voiceButton.parentElement.appendChild(ripple);
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                showError('Could not access microphone. Please check permissions.');
+            }
+        }
+
+        // Stop recording
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                voiceButton.classList.remove('recording');
+                voiceButton.classList.add('processing');
+                updateStatus('Processing...');
+
+                // Remove ripple
+                const ripple = document.querySelector('.ripple');
+                if (ripple) ripple.remove();
+            }
+        }
+
+        // Process audio
+        async function processAudio(audioBlob) {
+            try {
+                // Stop any currently playing audio
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio = null;
+                }
+
+                audioWave.classList.remove('active');
+
+                // Step 1: Transcribe with Whisper
+                updateStatus('Transcribing your speech...');
+                const formData = new FormData();
+                formData.append('audio', audioBlob, 'recording.wav');
+
+                const transcribeResponse = await fetch('http://localhost:3000/transcribe', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!transcribeResponse.ok) {
+                    throw new Error('Transcription failed');
+                }
+
+                const transcribeData = await transcribeResponse.json();
+                const userText = transcribeData.text;
+
+                if (!userText || userText.trim() === '') {
+                    throw new Error('No speech detected');
+                }
+
+                addMessage('user', userText);
+
+                // Step 2: Get AI response
+                updateStatus('Thinking...');
+                const chatResponse = await fetch('http://localhost:3000/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: userText })
+                });
+
+                if (!chatResponse.ok) {
+                    throw new Error('Chat request failed');
+                }
+
+                const chatData = await chatResponse.json();
+                const assistantText = chatData.response;
+
+                addMessage('assistant', assistantText);
+
+                // Step 3: Convert to speech
+                updateStatus('Generating speech...');
+                const ttsResponse = await fetch('http://localhost:3000/speak', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: assistantText })
+                });
+
+                if (!ttsResponse.ok) {
+                    throw new Error('TTS request failed');
+                }
+
+                const audioArrayBuffer = await ttsResponse.arrayBuffer();
+                const audioBlob2 = new Blob([audioArrayBuffer], { type: 'audio/mp3' });
+                const audioUrl = URL.createObjectURL(audioBlob2);
+
+                // Play audio
+                updateStatus('Playing response...');
+                audioWave.classList.add('active');
+                currentAudio = new Audio(audioUrl);
+
+                currentAudio.onended = () => {
+                    updateStatus('Press the button and speak');
+                    voiceButton.classList.remove('processing');
+                    audioWave.classList.remove('active');
+                };
+
+                currentAudio.onerror = (error) => {
+                    console.error('Audio playback error:', error);
+                    showError('Error playing audio response');
+                    updateStatus('Press the button and speak');
+                    voiceButton.classList.remove('processing');
+                    audioWave.classList.remove('active');
+                };
+
+                await currentAudio.play();
+
+            } catch (error) {
+                console.error('Error processing audio:', error);
+                showError(error.message || 'An error occurred during processing');
+                updateStatus('Press the button and speak');
+                voiceButton.classList.remove('processing');
+                audioWave.classList.remove('active');
+            }
+        }
+
+        // Button click handler
+        voiceButton.addEventListener('click', () => {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+
+        // Keyboard shortcut (spacebar)
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !isRecording) {
+                e.preventDefault();
+                startRecording();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'Space' && isRecording) {
+                e.preventDefault();
+                stopRecording();
+            }
+        });
+    </script>
+</body>
+</html>
